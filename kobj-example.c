@@ -18,9 +18,9 @@
  * later read out of it.
  */
 
-static int foo;
-static int baz;
-static int bar;
+static int value0=13;	// accessible via /sys/kernel/kobject_example/foo
+static int value1=27;
+static int value2=55;
 
 /*
  * The "foo" file where a static variable is read from and written to.
@@ -28,7 +28,7 @@ static int bar;
 static ssize_t foo_show(struct kobject *kobj, struct kobj_attribute *attr,
 			char *buf)
 {
-	return sprintf(buf, "%d\n", foo);
+	return sprintf(buf, "%d\n", value0);
 }
 
 static ssize_t foo_store(struct kobject *kobj, struct kobj_attribute *attr,
@@ -36,7 +36,7 @@ static ssize_t foo_store(struct kobject *kobj, struct kobj_attribute *attr,
 {
 	int ret;
 
-	ret = kstrtoint(buf, 10, &foo);
+	ret = kstrtoint(buf, 10, &value0);
 	if (ret < 0)
 		return ret;
 
@@ -57,9 +57,9 @@ static ssize_t b_show(struct kobject *kobj, struct kobj_attribute *attr,
 	int var;
 
 	if (strcmp(attr->attr.name, "baz") == 0)
-		var = baz;
+		var = value1;
 	else
-		var = bar;
+		var = value2;
 	return sprintf(buf, "%d\n", var);
 }
 
@@ -73,9 +73,9 @@ static ssize_t b_store(struct kobject *kobj, struct kobj_attribute *attr,
 		return ret;
 
 	if (strcmp(attr->attr.name, "baz") == 0)
-		baz = var;
+		value1 = var;
 	else
-		bar = var;
+		value2 = var;
 	return count;
 }
 
