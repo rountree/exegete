@@ -24,10 +24,16 @@ static int get_physical_package_count(void){
 	return num_sockets;
 }
 
+static u16 get_max_cores_per_package(void){
+	struct cpuinfo_x86 *c = &cpu_data(0);
+	return c->x86_max_cores;
+}
+
 static int __init exegete_init(void)
 {
 	printk( KERN_INFO "Module exegete loaded successfully.\n");
 	printk( KERN_INFO "Number of packages=%d.\n", get_physical_package_count() );
+	printk( KERN_INFO "Number of cores per package=%d\n", get_max_cores_per_package() );
 	return 0;
 }
 
