@@ -2,7 +2,7 @@
 # obj-$(CONFIG_SAMPLE_KOBJECT) += kobject-example.o kset-example.o
 
 #kset-example-objs := kset-example.o
-obj-m += kobj-example.o kset-example.o
+obj-m += kobj-example.o kset-example.o exegete.o
 
 all: 
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
