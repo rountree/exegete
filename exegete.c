@@ -5,9 +5,12 @@
 #include <linux/cpumask.h>	// for_each_online_cpu()
 #include <linux/topology.h>	// topology_physical_package_id()
 
+
 /* Topology information is scattered among:
  * 	Documentation/x86/topology.rst
  * 	Documentation/admin-guide/cputopology.rst
+ *
+ * 	For hyperthreading test grep smp_num_siblings in x86/kernel/cpu/common.c
  */
 
 static int get_physical_package_count(void){
@@ -34,6 +37,11 @@ static int __init exegete_init(void)
 	printk( KERN_INFO "Module exegete loaded successfully.\n");
 	printk( KERN_INFO "Number of packages=%d.\n", get_physical_package_count() );
 	printk( KERN_INFO "Number of cores per package=%d\n", get_max_cores_per_package() );
+	printk( KERN_INFO "Number of hyperthreads per core=%d\n", smp_num_siblings);
+	printk( KERN_INFO "Number of cpu ids=%d\n", nr_cpu_ids);
+	printk( KERN_INFO "Number of possible cpus=%d\n", num_possible_cpus() );
+	printk( KERN_INFO "Number of present cpus=%d\n", num_present_cpus() );
+	printk( KERN_INFO "Number of active cpus=%d\n", num_active_cpus() );
 	return 0;
 }
 
