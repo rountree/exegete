@@ -11,7 +11,13 @@
  * 	Documentation/admin-guide/cputopology.rst
  *
  * 	For hyperthreading test grep smp_num_siblings in x86/kernel/cpu/common.c
+ *
+ *
  */
+
+static cpumask_var_t per_package_mask;
+static cpumask_var_t per_core_mask;
+// static cpumask_var_t per_thread_mask; (Use cpu_online_mask.)
 
 static int get_physical_package_count(void){
 
@@ -34,6 +40,9 @@ static u16 get_max_cores_per_package(void){
 
 static int __init exegete_init(void)
 {
+	bool enough_memory;
+	int cpu, this_package_num, this_core_num, next_package=0, next_core=0;
+
 	printk( KERN_INFO "Module exegete loaded successfully.\n");
 	printk( KERN_INFO "Number of packages=%d.\n", get_physical_package_count() );
 	printk( KERN_INFO "Number of cores per package=%d\n", get_max_cores_per_package() );
@@ -42,10 +51,44 @@ static int __init exegete_init(void)
 	printk( KERN_INFO "Number of possible cpus=%d\n", num_possible_cpus() );
 	printk( KERN_INFO "Number of present cpus=%d\n", num_present_cpus() );
 	printk( KERN_INFO "Number of active cpus=%d\n", num_active_cpus() );
+
+	// Allocate memory for cpu masks.
+	enough_memory = zalloc_cpumask_var( &per_package_mask, GFP_KERNEL); 
+	if(!enough_memory) goto per_package_mask_err;
+
+	enough_memory = zalloc_cpumask_var( &per_core_mask, GFP_KERNEL); 
+	if(!enough_memory) goto per_core_mask_err;
+
+
+	// Populate one cpu per package and per core.
+	for_each_online_cpu( cpu ) {
+		this_package_num = topology_physical_package_id(cpu);
+		if( this_package_num == next_package ){
+			next_package++;
+			cpumask_set_cpu( cpu, per_package_mask );
+		}
+		this_core_num = topology_core_id( cpu );
+		if( this_core_num == next_core ){
+			next_core++;
+			cpumask_set_cpu( cpu, per_core_mask );
+		}
+	}
+
+	printk( KERN_INFO "Weight of per_package_mask=%d\n", cpumask_weight( per_package_mask ) );
+	printk( KERN_INFO "Weight of per_core_mask=%d\n", cpumask_weight( per_core_mask ) );
+	printk( KERN_INFO "Weight of per_thread_mask=%d\n", cpumask_weight( cpu_online_mask ) );
+		
 	return 0;
+
+per_core_mask_err:
+	free_cpumask_var( per_package_mask );
+per_package_mask_err:
+	return -ENOMEM;
 }
 
 static void __exit exegete_exit(void){
+	free_cpumask_var( per_core_mask );
+	free_cpumask_var( per_package_mask );
 	printk( KERN_INFO "Module exegete shuffling off this mortal coil....\n");
 }
 module_init(exegete_init);
