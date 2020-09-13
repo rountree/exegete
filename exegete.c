@@ -18,6 +18,14 @@
 static unsigned long long raw;
 
 static ssize_t raw_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf){
+	int rc;
+	u32 reg = 0x1630;
+	u32 data[2];
+	rc = rdmsr_safe_on_cpu(0, reg, &data[0], &data[1]);
+	if( rc ){
+		return sprintf(buf, "Cannot read msr 0x%x\n", reg);
+	}
+	raw = (u64)(data[0]) | ( (u64)(data[1])<<32);
 	return sprintf(buf, "0x%llx\n", raw);
 }
 
@@ -192,3 +200,49 @@ module_init(exegete_init);
 module_exit(exegete_exit);
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Barry Rountree <rountree@llnl.gov>");
+/*
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <inttypes.h>
+
+typedef union msrval {
+        uint64_t raw;
+        uint32_t reg[2];
+
+        struct pkg_power_limit{
+                uint64_t power_limit_1          : 15;   // 14:00
+                uint64_t enable_limit_1         :  1;   // 15
+                uint64_t clamping_limit_1       :  1;   // 16
+                uint64_t time_window_1          :  7;   // 23:17
+                uint64_t reserved_0             :  8;   // 31:24
+                uint64_t power_limit_2          : 15;   // 46:32
+                uint64_t enable_limit_2         :  1;   // 47
+                uint64_t clamping_limit_2       :  1;   // 48
+                uint64_t time_window_2          :  7;   // 55:49
+                uint64_t reserved_1             :  7;   // 62:56
+                uint64_t lock                   :  1;   // 63
+        } pkg_power_limit;
+
+        struct rapl_units{
+                uint64_t power_units            :  4;   // 03:00
+                uint64_t reserved_0             :  4;   // 07:04
+                uint64_t energy_units           :  5;   // 12:08
+                uint64_t reserved_1             :  3;   // 15:13
+                uint64_t time_units             :  4;   // 19:16
+                uint64_t reserved_2             : 44;   // 63:20
+        } rapl_units;
+
+} msrval_t;
+
+int main(){
+
+        msrval_t x;
+        x.raw=0xffffffffffffffff;
+        fprintf(stdout, "x.reg[1] = %"PRIx32"\n", x.reg[1]);
+        fprintf(stdout, "sizeof(msrval_t)=%zu\n", sizeof(msrval_t));
+        fprintf(stdout, "sizeof(int)=%zu\n", sizeof(int));
+        fprintf(stdout, "x.rapl_units.energy_units=%"PRIx64"\n", (uint64_t)(x.rapl_units.energy_units));
+        return 0;
+}
+*/
