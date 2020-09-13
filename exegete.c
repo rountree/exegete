@@ -38,11 +38,7 @@ static u16 get_max_cores_per_package(void){
 	return c->x86_max_cores;
 }
 
-static int __init exegete_init(void)
-{
-	bool enough_memory;
-	int cpu, this_package_num, this_core_num, next_package=0, next_core=0;
-
+static void warm_fuzzies(void){
 	printk( KERN_INFO "Module exegete loaded successfully.\n");
 	printk( KERN_INFO "Number of packages=%d.\n", get_physical_package_count() );
 	printk( KERN_INFO "Number of cores per package=%d\n", get_max_cores_per_package() );
@@ -51,14 +47,33 @@ static int __init exegete_init(void)
 	printk( KERN_INFO "Number of possible cpus=%d\n", num_possible_cpus() );
 	printk( KERN_INFO "Number of present cpus=%d\n", num_present_cpus() );
 	printk( KERN_INFO "Number of active cpus=%d\n", num_active_cpus() );
+	printk( KERN_INFO "Weight of per_package_mask=%d\n", cpumask_weight( per_package_mask ) );
+	printk( KERN_INFO "Weight of per_core_mask=%d\n", cpumask_weight( per_core_mask ) );
+	printk( KERN_INFO "Weight of per_thread_mask=%d\n", cpumask_weight( cpu_online_mask ) );
+}
+
+/* initialize_cpumasks(void)
+ *
+ * Allocates memory for an initializes per_package_make and per_core_mask.
+ * Returns 0 on success or -ENOMEM on failure.
+ */
+static int initialize_cpumasks(void){
+
+	bool enough_memory;
+	int cpu, this_package_num, this_core_num, next_package=0, next_core=0;
 
 	// Allocate memory for cpu masks.
 	enough_memory = zalloc_cpumask_var( &per_package_mask, GFP_KERNEL); 
-	if(!enough_memory) goto per_package_mask_err;
+	if(!enough_memory) {
+		printk( KERN_CRIT "exegete: unable to allocate sufficient memory for per_package_mask.\n" );
+		goto per_package_mask_err;
+	}
 
 	enough_memory = zalloc_cpumask_var( &per_core_mask, GFP_KERNEL); 
-	if(!enough_memory) goto per_core_mask_err;
-
+	if(!enough_memory) {
+		printk( KERN_CRIT "exegete: unable to allocate sufficient memory for per_core_mask.\n" );
+		goto per_core_mask_err;
+	}
 
 	// Populate one cpu per package and per core.
 	for_each_online_cpu( cpu ) {
@@ -73,10 +88,6 @@ static int __init exegete_init(void)
 			cpumask_set_cpu( cpu, per_core_mask );
 		}
 	}
-
-	printk( KERN_INFO "Weight of per_package_mask=%d\n", cpumask_weight( per_package_mask ) );
-	printk( KERN_INFO "Weight of per_core_mask=%d\n", cpumask_weight( per_core_mask ) );
-	printk( KERN_INFO "Weight of per_thread_mask=%d\n", cpumask_weight( cpu_online_mask ) );
 		
 	return 0;
 
@@ -84,13 +95,56 @@ per_core_mask_err:
 	free_cpumask_var( per_package_mask );
 per_package_mask_err:
 	return -ENOMEM;
+
+}
+
+enum{
+	PKG_POWER_LIMIT,
+	RAPL_UNITS,
+	NUM_MSRS
+};
+
+static struct kobject *exegete_kobj;			// Root for this project.
+static struct kobject *msr_kobj[NUM_MSRS];	// This is going to get much larger...
+
+static int allocate_kobjects(void){
+
+	exegete_kobj = kobject_create_and_add("exegete", NULL);
+	if( exegete_kobj == NULL ){ return -ENOMEM; }
+
+	msr_kobj[PKG_POWER_LIMIT] = kobject_create_and_add("pkg_power_limit", exegete_kobj);
+	if( msr_kobj[PKG_POWER_LIMIT] == NULL ){ return -ENOMEM; }
+	
+	msr_kobj[RAPL_UNITS] = kobject_create_and_add("rapl_units", exegete_kobj);
+	if( msr_kobj[RAPL_UNITS] == NULL ){ return -ENOMEM; }
+
+	return 0;
+}
+
+static void deallocate_kobjects(void){
+
+	kobject_put( msr_kobj[PKG_POWER_LIMIT] );
+	kobject_put( msr_kobj[RAPL_UNITS] );
+	kobject_put( exegete_kobj );
+}
+
+
+static int __init exegete_init(void)
+{
+	int rc;
+	rc = initialize_cpumasks();
+	rc = allocate_kobjects();
+	warm_fuzzies();
+	return rc;
 }
 
 static void __exit exegete_exit(void){
+	deallocate_kobjects();
 	free_cpumask_var( per_core_mask );
 	free_cpumask_var( per_package_mask );
-	printk( KERN_INFO "Module exegete shuffling off this mortal coil....\n");
+	printk( KERN_INFO "exegete:  unloaded.\n");
 }
+
 module_init(exegete_init);
 module_exit(exegete_exit);
 MODULE_LICENSE("GPL v2");
