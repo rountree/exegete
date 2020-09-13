@@ -15,6 +15,35 @@
  *
  */
 
+static unsigned long long raw;
+
+static ssize_t raw_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf){
+	return sprintf(buf, "0x%llx\n", raw);
+}
+
+static ssize_t raw_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count){
+	
+	int ret;
+
+	ret = kstrtoull(buf, 16, &raw);
+	if( ret < 0 ){
+		return ret;
+	}
+
+	return count;
+}
+
+static struct kobj_attribute raw_attribute = __ATTR(foo, 0664, raw_show, raw_store);
+
+static struct attribute *attrs[] = {
+	&raw_attribute.attr,
+	NULL
+};
+
+static struct attribute_group attr_group = {
+	.attrs = attrs,
+};
+
 static cpumask_var_t per_package_mask;
 static cpumask_var_t per_core_mask;
 // static cpumask_var_t per_thread_mask; (Use cpu_online_mask.)
@@ -50,6 +79,8 @@ static void warm_fuzzies(void){
 	printk( KERN_INFO "Weight of per_package_mask=%d\n", cpumask_weight( per_package_mask ) );
 	printk( KERN_INFO "Weight of per_core_mask=%d\n", cpumask_weight( per_core_mask ) );
 	printk( KERN_INFO "Weight of per_thread_mask=%d\n", cpumask_weight( cpu_online_mask ) );
+	printk( KERN_INFO "sizeof(unsigned long)=%zu\n", sizeof(unsigned long) );
+	printk( KERN_INFO "sizeof(unsigned long long)=%zu\n", sizeof(unsigned long long) );
 }
 
 /* initialize_cpumasks(void)
@@ -108,6 +139,7 @@ static struct kobject *exegete_kobj;			// Root for this project.
 static struct kobject *msr_kobj[NUM_MSRS];	// This is going to get much larger...
 
 static int allocate_kobjects(void){
+	int rc;
 
 	exegete_kobj = kobject_create_and_add("exegete", NULL);
 	if( exegete_kobj == NULL ){ return -ENOMEM; }
@@ -117,6 +149,17 @@ static int allocate_kobjects(void){
 	
 	msr_kobj[RAPL_UNITS] = kobject_create_and_add("rapl_units", exegete_kobj);
 	if( msr_kobj[RAPL_UNITS] == NULL ){ return -ENOMEM; }
+
+	rc = sysfs_create_group(msr_kobj[PKG_POWER_LIMIT], &attr_group);
+	if( rc ){ 
+		kobject_put( msr_kobj[PKG_POWER_LIMIT] ); 
+		return rc;
+	}
+	rc = sysfs_create_group(msr_kobj[RAPL_UNITS], &attr_group);
+	if( rc ){ 
+		kobject_put( msr_kobj[RAPL_UNITS] ); 
+		return rc;
+	}
 
 	return 0;
 }
