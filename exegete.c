@@ -25,7 +25,7 @@ static ssize_t raw_store(struct kobject *kobj, struct kobj_attribute *attr, cons
 	
 	int ret;
 
-	ret = kstrtoull(buf, 16, &raw);
+	ret = kstrtoull(buf, 0, &raw);
 	if( ret < 0 ){
 		return ret;
 	}
@@ -33,7 +33,7 @@ static ssize_t raw_store(struct kobject *kobj, struct kobj_attribute *attr, cons
 	return count;
 }
 
-static struct kobj_attribute raw_attribute = __ATTR(foo, 0664, raw_show, raw_store);
+static struct kobj_attribute raw_attribute = __ATTR(raw, 0664, raw_show, raw_store);
 
 static struct attribute *attrs[] = {
 	&raw_attribute.attr,
