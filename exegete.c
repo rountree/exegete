@@ -15,9 +15,70 @@
  *
  */
 
-static unsigned long long raw;
+/*
+ * sys/
+ *     exegete/
+ *             per_thread/
+ *             per_core/
+ *             per_package/
+ *			0x000_IA32_P5_MC_ADDR/
+ *			0x001_IA32_P5_MC_TYPE/
+ *			0x002_UNKNOWN/
+ *			...
+ * 			0x610_MSR_PKG_POWER_LIMIT/
+ * 				raw
+ * 				notes
+ * 				Power_Limit_1/
+ * 					raw
+ * 					notes
+ * 					scaled
+ * 				Power_Limit_2/
+ * 				Time_Window_1/
+ * 			 	Time_Window_2/
+ * 			 	Enable_Limit_1/
+ * 			 	Enable_Limit_2/
+ * 			 	Package_Clamping_1/
+ * 			 	Package_Clamping_2/
+ * 			 	Lock/
+ * 			 		raw
+ * 			 		notes
+ *
+ *
+
+static ssize_t msr_count;
+
+static struct msr_obj {
+	struct kobject kobj;
+	u32 msr_address;
+};
+
+
+static struct msr_obj **msr_obj_array;
+
+#define to_msr_obj(x) container_of(x, struct foo_obj, kobj)
+
+static ssize_t get_readable_msr_count(void){
+	
+	u32 reg;
+	u32 data[2];
+	msr_count = 0;
+	// FIXME
+	// There are a handful of MSRs outside of this range.  Come back later and 
+	// deal with them.  
+	for( reg=0; reg<0x0FFFF; reg++ ){
+		rc = rdmsr_safe_on_cpu(0, reg, &data[0], &data[1]);
+		if( rc == 0 ){
+			msr_count++;
+		}
+	}
+	printk( KERN_INFO "Number of readable MSRs=%u\n", msr_count );
+	return msr_count;
+}
+
 
 static ssize_t raw_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf){
+
+	u64 raw;
 	int rc;
 	u32 reg = 0x1630;
 	u32 data[2];
@@ -31,6 +92,7 @@ static ssize_t raw_show(struct kobject *kobj, struct kobj_attribute *attr, char 
 
 static ssize_t raw_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count){
 	
+	u64 raw;
 	int ret;
 
 	ret = kstrtoull(buf, 0, &raw);
@@ -183,10 +245,12 @@ static void deallocate_kobjects(void){
 static int __init exegete_init(void)
 {
 	int rc;
+
 	rc = initialize_cpumasks();
 	rc = allocate_kobjects();
 	warm_fuzzies();
-	return rc;
+	// How many MSRs are there out there?
+	return 0;
 }
 
 static void __exit exegete_exit(void){
