@@ -35,6 +35,22 @@
 */
 
 //
+// Master msr list.
+//
+
+typedef enum {
+	PACKAGE_SCOPE,
+	CORE_SCOPE,
+	CPU_SCOPE,	// aka thread
+} scope_t;
+
+static struct msr_master{
+	u32 address;
+	u64 writemask;
+	scope_t scope;
+};
+
+//
 // struct kobject containers that make up the sysfs directory structure.
 //
 
@@ -43,6 +59,8 @@ struct ex_obj{
 	struct scope_obj *scope;
 	u32 num_scopes;
 };
+#define to_ex_obj(x) container_of(x, struct ex_obj, kobj)
+
 
 struct scope_obj{
 	struct kobject kobj;
@@ -50,18 +68,35 @@ struct scope_obj{
 	struct msr_obj *msr;
 	u32 num_msrs;
 };
+#define to_scope_obj(x) container_of(x, struct scope_obj, kobj)
 
 struct msr_obj{
 	struct kobject kobj;
-	u32 addr;
+	u32 msr_idx;
 	struct bitfield_obj *bitfield;
-	u32 num_bitfields;
 };
+#define to_msr_obj(x) container_of(x, struct msr_obj, kobj)
 
 struct bitfield_obj{
 	struct kobject kobj;
 	u32 bitfield_idx;
 };
+#define to_bitfield_obj(x) container_of(x, struct msr_obj, kobj)
+
+//
+// Functions attached to attributes
+//
+static ssize_t show_msr_address(struct kobject *kobj, struct kobj_attribute *attr, char *buf){ }
+static ssize_t show_msr_name(struct kobject *kobj, struct kobj_attribute *attr, char *buf){ }
+static ssize_t show_msr_notes(struct kobject *kobj, struct kobj_attribute *attr, char *buf){ }
+static ssize_t show_msr_scope(struct kobject *kobj, struct kobj_attribute *attr, char *buf){ }
+static ssize_t show_msr_value(struct kobject *kobj, struct kobj_attribute *attr, char *buf){ }
+static ssize_t store_msr_value(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count){ }
+
+static ssize_t show_bits_notes(struct kobject *kobj, struct kobj_attribute *attr, char *buf){ }
+static ssize_t show_bits_range(struct kobject *kobj, struct kobj_attribute *attr, char *buf){ }
+static ssize_t show_bits_value(struct kobject *kobj, struct kobj_attribute *attr, char *buf){ }
+static ssize_t store_bits_value(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count){ }
 
 //
 // struct attribute containers that describe the files in the directory structure.
